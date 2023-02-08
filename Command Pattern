@@ -1,0 +1,138 @@
+Command Pattern.
+명령 패턴은 추후에 실행 될 특정 액션(주로 메소드/함수)을 별도의 오브젝트 화 하는것이다.
+명령 패턴은 주로 객체로 명령 요청을 캡슐화 하는데 사용되며, 명령을 실행하는 객체와 수행하는 객체 사이의 커플링을 없애기 위해 사용하는 패턴이다.
+
+명령 패턴은 4가지 구성요소로 이루어져 있다.
+1. Command Interface
+ : 명령을 객체화 한 이후, 호출하기 위한 인터페이스. 해당 인터페이스를 이용해 client가 명령을 호출한다.
+2. ConcreteCommand Class
+ : Receiver Object와 Action간의 Binding을 정의한다.
+   Receiver에서 대응하는 동작을 호출하여 실행하도록 구현한다.
+3. Client
+ : Command에 요청을 수행하도록 요청한다.
+4. Receiver
+ : 받은 명령에 대한 세부 동작들을 정의하는 클래스.
+   Action들에 대하여 실제 수행될 메소드들을 정의하는 클래스다. 실제 기능 구현 클래스.
+ 
+ 명령 패턴은 명령 큐 등을 구현하는데 유용하게 사용된다.
+ 혹은 Undo/Redo 등의 액션을 구현하는데 유용하게 사용 된다.
+ 
+ 
+ 게임에서 사용시 키변경 구현에 사용될 수 있다고 생각한다.
+ 예를 들어 우리가 게임 내부에서 키 설정 변경을 구현한다고 가정하자.
+ 마우스 입력, 키보드 입력 등을 UI를 통해 각각 보여주고, 우리가 원하는대로 키입력에 따른 액션을 변경하는 설정창을 구현할 때
+ 게임내에서 일어나는 액션(공격, 회피, 시점이동, 이동, 줌인/아웃 등의 모든 기능들)을 명령패턴을 이용하여 구현할수 있다.
+ 1. 명령을 호출하기 위한 인터페이스 Actions를 구현.
+ e.g.
+ 
+ // 각 행동에 대한 인터페이스 클래스
+ class Action
+ {
+ public:
+        virtual void execute() = 0;
+ }
+  
+ 2. 해당 명령을 실행하기 위하여 각각의 기능(공격, 방어 등) 구현.
+ e.g.
+ 
+  // 실제 수행될 기능 정의.
+ class Attack
+ {
+ public:
+        virtual void DoAttack() {~}; // e.g. Cout << "Attack" 등
+ }
+ 
+ class Avoid
+ {
+ public:
+        virtual void DoAvoid() {~};
+ }
+ 
+......
+ 3. 실제 구현된 명령과 입력을 위한 인터페이스를 연결하기 위한 클래스 구현.
+ e.g.
+ // 실행될 명령과 인터페이스 연결 클래스.
+ class AttackOnCommand : public Action
+ {
+ private:
+        Attack* attack;
+ public:
+    AttackOnCommand(Attack* &InputAttack) : attack(InputAttack) {};
+    virtual void execute() {if(!!attack){attack->DoAttack();}};    
+ }
+ 
+ class AvoidOnCommand : public Action
+ {
+ private:
+          Avoid* avoid;
+ public:
+          AvoidOnDemand(Avoid* &InputAvoid) : avoid(InputAvoid) {};
+          virtual void execute() {if(!!avoid) {avoid->DoAvoid()}};
+ }
+ 
+ 4. 3번에서 구현된 OnCommand클래스들과 실제 입력을 연결할 클래스 생성.
+ e.g.
+ class Controller
+ {
+ public:
+      Controller() {};
+      
+      // 만약 실제 코드라면 중복 체크등이 필요하겠지만 일단 간단하게 구현.
+      void SetAction(UINT inputMessage, Action* &inputAction) { inputMap.insert(inputMessage, inputAction); }; //
+      
+      void DoAction(UINT inputMessage)
+      {
+        // 입력에 따른 명령이 존재하는지 확인.
+        Action* DoAction = inputMap.find(inputMessage);
+        if(!!DoAction) {DoAction->execute();};
+      }
+      
+ private:
+      map<UINT, Action*> inputMap;
+ }
+ 
+ 4. 해당 Controller를 사용할 클래스 작성.
+ class Player
+ {
+ 
+ public:
+  Player() 
+  {
+    controller = new Controller();
+    
+    // 명령 생성
+    Action* attackCommand = new AttackCommand(new attack());
+    Action* avoidCommand = new AvoidCommand(new avoid());
+    
+    // 명령을 controller에 등록.
+    controller->SetAction(VK_LBUTTON, attackCommand);
+    controller->SetAction(VK_SPACE, avoidCommand);
+  }
+  
+  // 실제 입력에 따라 명령 수행.
+  void KeyInput(UINT input) {controller->DoAction(input);};
+  ......
+ private:
+  Controller* controller;
+  
+ }
+ 
+ 
+ 위와 같은 방식으로 구현한다면(코드가 실제 작동할지는 모르겠음. 단순히 이해를 위한 코드.)
+ Attack을 상속받아 특수 공격을 구현하는 등의 목적를 위해 Attack들의 파상 클래스 생성.
+ Avoid를 상속받아 무적회피 등을 구현하는 등의 목적을 위해 Avoid의 파생 클래스 생성.
+ 
+ AttackCommand 클래스에 Attack을 등록.
+ AvoidCommand 클래스에 Avoid를 등록.
+ 
+ 
+ Controller 클래스에 AttackCommand와 해당 클래스를 실행하기 위한 입력키를 등록.
+ controller 클래스에 AvoidCommand와 해당 클래스를 실행하기 위한 입력키 등록.
+ 
+ Player클래스에서 입력에 따른 Action 호출.
+ 
+ 사용자가 원한다면 Controller::SetAction 를 통해 원하는 키와 원하는 행동 binding 가능.
+ 
+ 효율적인 코드 작성이 가능하다.
+ 
+
